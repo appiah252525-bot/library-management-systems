@@ -1,0 +1,116 @@
+// Prisma Schema for University Library Management System
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  LIBRARIAN
+  STUDENT
+}
+
+enum BorrowStatus {
+  BORROWED
+  RETURNED
+  OVERDUE
+}
+
+enum FineStatus {
+  UNPAID
+  PAID
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  name      String
+  email     String   @unique
+  role      Role     @default(STUDENT)
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student   Student?
+
+  @@index([email])
+  @@index([role])
+}
+
+model Student {
+  id            String         @id @default(cuid())
+  studentNumber String         @unique
+  fullName      String
+  department    String
+  email         String         @unique
+  phone         String
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId        String?        @unique
+  borrowRecords BorrowRecord[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([studentNumber])
+  @@index([department])
+  @@index([email])
+}
+
+model Book {
+  id              String         @id @default(cuid())
+  title           String
+  author          String
+  isbn            String         @unique
+  category        String
+  publisher       String
+  publicationYear Int
+  quantity        Int            @default(1)
+  coverImage      String?
+  description     String?
+  borrowRecords   BorrowRecord[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([title])
+  @@index([author])
+  @@index([isbn])
+  @@index([category])
+}
+
+model BorrowRecord {
+  id          String       @id @default(cuid())
+  studentId   String
+  student     Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  bookId      String
+  book        Book         @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  borrowDate  DateTime     @default(now())
+  dueDate     DateTime
+  returnDate  DateTime?
+  status      BorrowStatus @default(BORROWED)
+  fine        Fine?
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([studentId])
+  @@index([bookId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model Fine {
+  id             String       @id @default(cuid())
+  borrowRecordId String       @unique
+  borrowRecord   BorrowRecord @relation(fields: [borrowRecordId], references: [id], onDelete: Cascade)
+  amount         Float        @default(0.0)
+  paidStatus     FineStatus   @default(UNPAID)
+  paidAt         DateTime?
+  paymentMethod  String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([paidStatus])
+}
